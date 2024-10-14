@@ -15,12 +15,16 @@ enum class MapPixel {
 	undefined = -1,
 };
 
+typedef std::vector<std::vector<MapPixel>> Map;
+
 class Mapper {
-	std::vector<std::thread> pathTracers;
-	std::vector<BYTE> map; // raw map from file
-	std::vector<std::vector<MapPixel>> parsed_map; // 2D parsed map
+		std::vector<std::thread> pathTracers;
+		std::vector<BYTE> map; // raw map from file
+		Map parsed_map; // 2D parsed map
 
 	public:
+		bool found = false;
+
 		Mapper();
 
 		void LoadFile(std::string file);
@@ -31,15 +35,13 @@ class Mapper {
 
 		std::vector<BYTE> GetRawMap();
 
-		std::vector<std::vector<MapPixel>> GetParsedMap();
+		Map GetParsedMap();
 };
 
 MapPixel toMapPixel(char num);
 
-std::vector<BYTE> pathFindIt(std::vector<BYTE> map, void(*onRoute)(std::vector<BYTE>) = nullptr);
+Map pathFindIt(Map map, void(*onRoute)(Map) = nullptr);
 
-void spawnTracers(std::vector<BYTE> map);
+void spawnTracers(Map map);
 
-std::vector<MapPixel> parseMap(std::vector<BYTE> map);
-
-void display(std::vector<BYTE> map);
+std::pair<int, int> indexToXY(Map map, size_t index);

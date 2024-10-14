@@ -8,6 +8,8 @@ int main(){
 
 	mapper.LoadFile(std::string("./env/lab.bin"));
 
+	mapper.Display();
+
 	mapper.FindTarget();
 
 	mapper.Display();

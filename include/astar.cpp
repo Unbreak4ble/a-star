@@ -33,7 +33,8 @@ void Mapper::LoadFile(std::string file){
 }
 
 void Mapper::FindTarget(){
-
+	auto new_map = parsed_map;
+	parsed_map = pathFindIt(new_map);
 }
 
 void Mapper::Display(){
@@ -70,19 +71,14 @@ void Mapper::Display(){
 
 		std::cout << std::endl;
 	}
-
 }
 
 std::vector<BYTE> Mapper::GetRawMap(){
 	return map;
 }
 
-std::vector<std::vector<MapPixel>> Mapper::GetParsedMap(){
+Map Mapper::GetParsedMap(){
 	return parsed_map;
-}
-
-std::vector<BYTE> pathFindIt(std::vector<BYTE> map, void(*onRoute)(std::vector<BYTE>)){
-	return {};
 }
 
 MapPixel toMapPixel(char num){
@@ -111,6 +107,36 @@ MapPixel toMapPixel(char num){
 	}
 }
 
-void display(std::vector<BYTE> map){
+std::pair<int, int> indexToXY(Map map, size_t index){
+	std::pair<int, int> pair(0,0);
 
+	if(map.size() == 0) return pair;
+
+	int vertical_size = map.size();
+	int horizontal_size = map.at(0).size();
+	int x=0;
+	int y=0;
+
+	if(index <= horizontal_size){
+		pair.first = index;
+
+		return pair;
+	}
+
+	for(;index > horizontal_size; y++, x=index-=horizontal_size);
+
+	pair.first = x;
+	pair.second = y;
+
+	return pair;
+}
+
+Map pathFindIt(Map map, void(*onRoute)(Map)){
+	std::cout << "path finding it" << std::endl;
+
+	auto xy = indexToXY(map, 10);
+
+	std::cout << "xy: " << xy.first << " | " << xy.second << std::endl;
+
+	return map;
 }
