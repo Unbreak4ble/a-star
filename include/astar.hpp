@@ -1,5 +1,6 @@
 #pragma once
 
+#include <thread>
 #include <vector>
 #include <string>
 #include "../utils/types.hpp"
@@ -10,34 +11,35 @@ enum class MapPixel {
 	walked = 2,
 	from = 3,
 	target = 4,
-};
-
-class BinMap {
-	std::vector<BYTE> map;
-	std::vector<MapPixel> parsed_map;
-
-	public:
-		BinMap();
-
-		std::vector<BYTE> GetMap();
-
-		// stl friendly
-		void LoadMap(std::string file);
+	current = 5,
+	undefined = -1,
 };
 
 class Mapper {
-	BinMap map;
+	std::vector<std::thread> pathTracers;
+	std::vector<BYTE> map; // raw map from file
+	std::vector<std::vector<MapPixel>> parsed_map; // 2D parsed map
 
 	public:
 		Mapper();
 
-		void loadFile(std::string file);
+		void LoadFile(std::string file);
 
-		void findTarget();
+		void FindTarget();
 
-		std::vector<BYTE> getRawMap();
+		void Display();
 
-		std::vector<MapPixel> getParsedMap();
-}
+		std::vector<BYTE> GetRawMap();
 
-void display(BinMap map);
+		std::vector<MapPixel> GetParsedMap();
+};
+
+MapPixel toMapPixel(char num);
+
+std::vector<BYTE> pathFindIt(std::vector<BYTE> map, void(*onRoute)(std::vector<BYTE>) = nullptr);
+
+void spawnTracers(std::vector<BYTE> map);
+
+std::vector<MapPixel> parseMap(std::vector<BYTE> map);
+
+void display(std::vector<BYTE> map);
