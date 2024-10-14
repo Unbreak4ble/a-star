@@ -31,7 +31,7 @@ class Mapper {
 
 		std::vector<BYTE> GetRawMap();
 
-		std::vector<MapPixel> GetParsedMap();
+		std::vector<std::vector<MapPixel>> GetParsedMap();
 };
 
 MapPixel toMapPixel(char num);

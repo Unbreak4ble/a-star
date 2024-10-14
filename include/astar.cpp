@@ -36,12 +36,49 @@ void Mapper::FindTarget(){
 
 }
 
-std::vector<BYTE> Mapper::GetRawMap(){
+void Mapper::Display(){
+	for(int y=0; y<parsed_map.size(); y++){
+		std::vector<MapPixel> line = parsed_map.at(y);
+
+		for(int x=0; x<line.size(); x++){
+			MapPixel pixel = line.at(x);
+         	std::string color = "97";
+
+			switch(pixel){
+        		case MapPixel::barrier:
+        		color = "30";
+        		break;
+        		case MapPixel::path:
+        		color = "37";
+        		break;
+        		case MapPixel::walked:
+        		color = "31";
+        		break;
+        		case MapPixel::from:
+        		color = "32";
+        		break;
+        		case MapPixel::target:
+        		color = "33";
+        		break;
+        		case MapPixel::undefined:
+        		color = "34";
+        		break;
+        	}
+
+			std::cout << "\x1b[" << color << "m" << "◼" << "\033[0m" << (x != line.size()-1 ? " " : "");
+		}
+
+		std::cout << std::endl;
+	}
 
 }
 
-std::vector<MapPixel> Mapper::GetParsedMap(){
+std::vector<BYTE> Mapper::GetRawMap(){
+	return map;
+}
 
+std::vector<std::vector<MapPixel>> Mapper::GetParsedMap(){
+	return parsed_map;
 }
 
 std::vector<BYTE> pathFindIt(std::vector<BYTE> map, void(*onRoute)(std::vector<BYTE>)){
