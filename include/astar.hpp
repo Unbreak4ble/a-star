@@ -45,3 +45,6 @@ Map pathFindIt(Map map, void(*onRoute)(Map) = nullptr);
 void spawnTracers(Map map);
 
 std::pair<int, int> indexToXY(Map map, size_t index);
+
+
+size_t locateValue(Map map, MapPixel pixel);

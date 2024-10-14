@@ -52,13 +52,13 @@ void Mapper::Display(){
         		case MapPixel::path:
         		color = "37";
         		break;
-        		case MapPixel::walked:
+        		case MapPixel::from:
         		color = "31";
         		break;
-        		case MapPixel::from:
+        		case MapPixel::target:
         		color = "32";
         		break;
-        		case MapPixel::target:
+        		case MapPixel::walked:
         		color = "33";
         		break;
         		case MapPixel::undefined:
@@ -117,13 +117,13 @@ std::pair<int, int> indexToXY(Map map, size_t index){
 	int x=0;
 	int y=0;
 
-	if(index <= horizontal_size){
+	if(index < horizontal_size){
 		pair.first = index;
 
 		return pair;
 	}
 
-	for(;index > horizontal_size; y++, x=index-=horizontal_size);
+	for(;index >= horizontal_size; y++, x=index-=horizontal_size);
 
 	pair.first = x;
 	pair.second = y;
@@ -131,12 +131,26 @@ std::pair<int, int> indexToXY(Map map, size_t index){
 	return pair;
 }
 
+size_t locateValue(Map map, MapPixel pixel){
+	for(int y=0; y < map.size(); y++){
+		std::vector<MapPixel> line = map.at(y);
+
+		for(int x=0; x < line.size(); x++){
+			MapPixel pixel_0 = line.at(x);
+
+			if(pixel_0 == pixel) return x+y*line.size();
+		}
+	}
+}
+
 Map pathFindIt(Map map, void(*onRoute)(Map)){
 	std::cout << "path finding it" << std::endl;
 
-	auto xy = indexToXY(map, 10);
+	size_t index = locateValue(map, MapPixel::from);
 
-	std::cout << "xy: " << xy.first << " | " << xy.second << std::endl;
+	auto xy = indexToXY(map, index);
+
+	std::cout <<  index << " -> " << xy.first << " | " << xy.second << std::endl;
 
 	return map;
 }
