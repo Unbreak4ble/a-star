@@ -4,6 +4,7 @@
 #include <vector>
 #include <string>
 #include <memory>
+#include <mutex>
 #include "../utils/types.hpp"
 
 #define REF_MAX 20000
@@ -24,14 +25,20 @@ class Mapper {
 		std::vector<std::unique_ptr<std::thread>> pathTracers;
 		std::vector<BYTE> map; // raw map from file
 		Map parsed_map; // 2D parsed map
+		Map tracedMap;
+		void(*onStepEvent)(Map map) = nullptr;
 
 	public:
+		std::mutex mtx;
+		std::mutex map_mtx;
 		bool found = false;
 		unsigned long ref_count=0;
 
 		Mapper();
 
 		void LoadFile(std::string file);
+
+		void onStep(void(*callback)(Map map));
 
 		void FindTarget();
 
@@ -43,8 +50,12 @@ class Mapper {
 
 		void setFound(Map new_map);
 
-		void push_thread(std::unique_ptr<std::thread> th);
+		void MergeWorkingMap(Map map);
 };
+
+Map mergeMaps(Map map1, Map map2);
+
+void displayMap(Map map);
 
 MapPixel toMapPixel(char num);
 

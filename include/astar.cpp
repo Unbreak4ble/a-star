@@ -11,10 +11,6 @@ Mapper::Mapper(){
 	//pathTracers = new std::vector<std::thread>();
 }
 
-void Mapper::push_thread(std::unique_ptr<std::thread> th){
-	//pathTracers.push_back(th);
-}
-
 void Mapper::LoadFile(std::string file){
 	std::string content = utils::fs::readFile(file);
 
@@ -39,6 +35,8 @@ void Mapper::LoadFile(std::string file){
 
 	if(line.size() > 0)
 		parsed_map.push_back(line);
+
+	tracedMap = parsed_map;
 }
 
 void Mapper::FindTarget(){
@@ -54,7 +52,6 @@ void Mapper::FindTarget(){
 
 	for(auto path : available_paths){
 		ths.push_back(std::make_unique<std::thread>(std::thread(forwardPath, this, new_map, path.first, path.second)));
-		//new_map = changePixelState(new_map, path.first, path.second, MapPixel::walked);
 	}
 
 	for(int i=0; i<ths.size(); i++){
@@ -63,13 +60,88 @@ void Mapper::FindTarget(){
 }
 
 void Mapper::setFound(Map new_map){
+	mtx.lock();
+	if(found == true) return;
+
 	parsed_map = new_map;
 	found = true;
+	mtx.unlock();
+}
+
+void Mapper::onStep(void(*callback)(Map map)){
+	onStepEvent = callback;
 }
 
 void Mapper::Display(){
-	for(int y=0; y<parsed_map.size(); y++){
-		std::vector<MapPixel> line = parsed_map.at(y);
+	displayMap(parsed_map);
+}
+
+std::vector<BYTE> Mapper::GetRawMap(){
+	return map;
+}
+
+Map Mapper::GetParsedMap(){
+	return parsed_map;
+}
+
+
+void Mapper::MergeWorkingMap(Map map){
+	map_mtx.lock();
+	
+	tracedMap = mergeMaps(tracedMap, map);
+
+	if(onStepEvent != nullptr){
+		onStepEvent(tracedMap);
+	}
+
+	map_mtx.unlock();
+}
+
+Map mergeMaps(Map map1, Map map2){
+	for(int y=0; y < map2.size(); y++){
+		std::vector<MapPixel> line = map2.at(y);
+
+		for(int x=0; x < line.size(); x++){
+			MapPixel pixel = line.at(x);
+
+			if(pixel == MapPixel::walked){
+				map1[y][x] = pixel;
+			}
+		}
+	}
+
+	return map1;
+}
+
+MapPixel toMapPixel(char num){
+	switch(num){
+		case 0:
+			return MapPixel::barrier;
+		break;
+		case 1:
+			return MapPixel::path;
+		break;
+		case 2:
+			return MapPixel::walked;
+		break;
+		case 3:
+			return MapPixel::from;
+		break;
+		case 4:
+			return MapPixel::target;
+		break;
+		case 5:
+			return MapPixel::current;
+		break;
+		default:
+			return MapPixel::undefined;
+		break;
+	}
+}
+
+void displayMap(Map map){
+	for(int y=0; y<map.size(); y++){
+		std::vector<MapPixel> line = map.at(y);
 
 		for(int x=0; x<line.size(); x++){
 			MapPixel pixel = line.at(x);
@@ -100,40 +172,6 @@ void Mapper::Display(){
 		}
 
 		std::cout << std::endl;
-	}
-}
-
-std::vector<BYTE> Mapper::GetRawMap(){
-	return map;
-}
-
-Map Mapper::GetParsedMap(){
-	return parsed_map;
-}
-
-MapPixel toMapPixel(char num){
-	switch(num){
-		case 0:
-			return MapPixel::barrier;
-		break;
-		case 1:
-			return MapPixel::path;
-		break;
-		case 2:
-			return MapPixel::walked;
-		break;
-		case 3:
-			return MapPixel::from;
-		break;
-		case 4:
-			return MapPixel::target;
-		break;
-		case 5:
-			return MapPixel::current;
-		break;
-		default:
-			return MapPixel::undefined;
-		break;
 	}
 }
 
@@ -196,6 +234,8 @@ void forwardPath(Mapper *mapper, Map map, int stopped_x, int stopped_y){
 
 	map = changePixelState(map, stopped_x, stopped_y, MapPixel::walked);
 
+	mapper->MergeWorkingMap(map);
+
 	++(mapper->ref_count);
 
 	std::pair<int,int> xy(stopped_x, stopped_y);
@@ -212,8 +252,6 @@ void forwardPath(Mapper *mapper, Map map, int stopped_x, int stopped_y){
 
 	if(available_paths.size() == 1){
 		std::pair<int,int> path = available_paths[0];
-
-		//std::cout << "recursive tho | x="  << path.first << ";y=" << path.second << " | " << mapper->ref_count << std::endl;
 
 		forwardPath(mapper, map, path.first, path.second);
 	}else{
