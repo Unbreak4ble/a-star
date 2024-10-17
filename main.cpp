@@ -1,5 +1,14 @@
 #include <iostream>
+#include <unistd.h>
 #include "include/astar.hpp"
+
+void onstep(Map map){
+	system("clear");
+
+	displayMap(map);
+	
+	usleep(1000);
+}
 
 int main(){
 	std::cout << "hello world from a star path finding algorithm" << std::endl;
@@ -8,7 +17,9 @@ int main(){
 
 	mapper.LoadFile(std::string("./env/big_lab.bin"));
 
-	mapper.Display();
+	//mapper.Display();
+
+	mapper.onStep(onstep);
 
 	std::cout << "finding it" << std::endl;
 
