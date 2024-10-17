@@ -36,15 +36,24 @@ class Mapper {
 		std::vector<BYTE> GetRawMap();
 
 		Map GetParsedMap();
+
+		void setFound(Map new_map);
 };
 
 MapPixel toMapPixel(char num);
 
-Map pathFindIt(Map map, void(*onRoute)(Map) = nullptr);
-
-void spawnTracers(Map map);
-
 std::pair<int, int> indexToXY(Map map, size_t index);
 
-
 size_t locateValue(Map map, MapPixel pixel);
+
+size_t XYToIndex(Map map, int x, int y);
+
+MapPixel getValue(Map map, int x, int y);
+
+Map changePixelState(Map map, int x, int y, MapPixel new_state);
+
+Map pathFindIt(Map map, void(*onRoute)(Map) = nullptr);
+
+std::vector<std::pair<int,int>> findPathsAround(Map map, std::pair<int,int> xy);
+
+void forwardPath(Mapper *mapper, Map map, int stopped_x, int stopped_y);

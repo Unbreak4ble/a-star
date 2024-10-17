@@ -34,7 +34,25 @@ void Mapper::LoadFile(std::string file){
 
 void Mapper::FindTarget(){
 	auto new_map = parsed_map;
-	parsed_map = pathFindIt(new_map);
+	
+	std::cout << "path finding it" << std::endl;
+
+	size_t index = locateValue(new_map, MapPixel::from);
+
+	auto xy = indexToXY(new_map, index);
+
+	std::vector<std::pair<int,int>> available_paths = findPathsAround(new_map, xy);
+
+	std::cout << index << " -> " << xy.first << " | " << xy.second << std::endl;
+	
+	for(auto path : available_paths){
+		forwardPath(this, new_map, path.first, path.second);
+	}
+}
+
+void Mapper::setFound(Map new_map){
+	parsed_map = new_map;
+	found = true;
 }
 
 void Mapper::Display(){
@@ -109,26 +127,36 @@ MapPixel toMapPixel(char num){
 
 std::pair<int, int> indexToXY(Map map, size_t index){
 	std::pair<int, int> pair(0,0);
-
-	if(map.size() == 0) return pair;
-
 	int vertical_size = map.size();
+
+	if(vertical_size == 0) return pair;
+
 	int horizontal_size = map.at(0).size();
-	int x=0;
-	int y=0;
 
-	if(index < horizontal_size){
-		pair.first = index;
-
-		return pair;
-	}
-
-	for(;index >= horizontal_size; y++, x=index-=horizontal_size);
-
-	pair.first = x;
-	pair.second = y;
+	pair.first = index%horizontal_size;
+	pair.second = (index - pair.first)/horizontal_size;
 
 	return pair;
+}
+
+size_t XYToIndex(Map map, int x, int y){
+	int vertical_size = map.size();
+
+	if(vertical_size == 0) return -1;
+
+	int horizontal_size = map.at(0).size();
+	
+	return y*horizontal_size + x;
+}
+
+MapPixel getValue(Map map, int x, int y){
+	return map[y][x];
+}
+
+Map changePixelState(Map map, int x, int y, MapPixel new_state){
+	map[y][x] = new_state;
+
+	return map;
 }
 
 size_t locateValue(Map map, MapPixel pixel){
@@ -138,19 +166,44 @@ size_t locateValue(Map map, MapPixel pixel){
 		for(int x=0; x < line.size(); x++){
 			MapPixel pixel_0 = line.at(x);
 
-			if(pixel_0 == pixel) return x+y*line.size();
+			if(pixel_0 == pixel) return XYToIndex(map, x, y);
 		}
+	}
+
+	return -1;
+}
+
+void forwardPath(Mapper *mapper, Map map, int stopped_x, int stopped_y){
+	if(mapper->found == false) return;
+
+	std::cout << "looking for paths in thread" << std::endl;
+
+	std::pair<int,int> xy(stopped_x, stopped_y);
+
+	std::vector<std::pair<int,int>> available_paths = findPathsAround(map, xy);
+
+	for(auto path : available_paths){
+		std::cout << "x=" <<xy.first << ";y="<< xy.second << " -> x=" << path.first << ";y=" << path.second << std::endl;
 	}
 }
 
-Map pathFindIt(Map map, void(*onRoute)(Map)){
-	std::cout << "path finding it" << std::endl;
+std::vector<std::pair<int,int>> findPathsAround(Map map, std::pair<int,int> from_xy){
+	std::vector<std::pair<int,int>> paths;
+	int x = from_xy.first;
+	int y = from_xy.second;
 
-	size_t index = locateValue(map, MapPixel::from);
+	for(int yy=-1; yy<2; yy++){
+		for(int xx=-1; xx<2; xx++){
+			int xr = x+xx;
+			int yr = y+yy;
 
-	auto xy = indexToXY(map, index);
+			MapPixel step = getValue(map, xr,yr);
 
-	std::cout <<  index << " -> " << xy.first << " | " << xy.second << std::endl;
+			if(step == MapPixel::path){
+				paths.push_back(std::pair<int,int>(xr,yr));
+			}
+		}
+	}
 
-	return map;
+	return paths;
 }
