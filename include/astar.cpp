@@ -53,9 +53,8 @@ void Mapper::FindTarget(){
 	std::vector<std::unique_ptr<std::thread>> ths;
 
 	for(auto path : available_paths){
-		new_map = changePixelState(new_map, path.first, path.second, MapPixel::walked);
-
 		ths.push_back(std::make_unique<std::thread>(std::thread(forwardPath, this, new_map, path.first, path.second)));
+		//new_map = changePixelState(new_map, path.first, path.second, MapPixel::walked);
 	}
 
 	for(int i=0; i<ths.size(); i++){
@@ -193,6 +192,9 @@ size_t locateValue(Map map, MapPixel pixel){
 
 void forwardPath(Mapper *mapper, Map map, int stopped_x, int stopped_y){
 	if(mapper->found) return;
+	if(mapper->ref_count >= REF_MAX) return;
+
+	map = changePixelState(map, stopped_x, stopped_y, MapPixel::walked);
 
 	++(mapper->ref_count);
 
@@ -202,21 +204,31 @@ void forwardPath(Mapper *mapper, Map map, int stopped_x, int stopped_y){
 
 	if(target_paths.size() > 0){
 		mapper->setFound(map);
+		--(mapper->ref_count);
 		return;
 	}
 
 	std::vector<std::pair<int,int>> available_paths = findPathsAround(map, xy);
 
-	std::vector<std::unique_ptr<std::thread>> ths;
+	if(available_paths.size() == 1){
+		std::pair<int,int> path = available_paths[0];
 
-	for(auto path : available_paths){
-		map = changePixelState(map, path.first, path.second, MapPixel::walked);
-		ths.push_back(std::make_unique<std::thread>(std::thread(forwardPath, mapper, map, path.first, path.second)));
+		//std::cout << "recursive tho | x="  << path.first << ";y=" << path.second << " | " << mapper->ref_count << std::endl;
+
+		forwardPath(mapper, map, path.first, path.second);
+	}else{
+		std::vector<std::unique_ptr<std::thread>> ths;
+
+		for(auto path : available_paths){
+			ths.push_back(std::make_unique<std::thread>(std::thread(forwardPath, mapper, map, path.first, path.second)));
+		}
+
+		for(int i=0; i<ths.size(); i++){
+			ths[i]->join();
+		}
 	}
 
-	for(int i=0; i<ths.size(); i++){
-		ths[i]->join();
-	}
+	--(mapper->ref_count);
 }
 
 std::vector<std::pair<int,int>> findPathsAround(Map map, std::pair<int,int> from_xy, MapPixel pixel){
@@ -226,8 +238,14 @@ std::vector<std::pair<int,int>> findPathsAround(Map map, std::pair<int,int> from
 
 	for(int yy=-1; yy<2; yy++){
 		for(int xx=-1; xx<2; xx++){
+			short correlation = xx + yy;
 			int xr = x+xx;
 			int yr = y+yy;
+
+			// ignore diagonal paths
+			if(!(correlation == -1 || correlation == 1)) {
+				continue;
+			}
 
 			MapPixel step = getValue(map, xr, yr);
 

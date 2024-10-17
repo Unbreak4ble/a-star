@@ -6,6 +6,8 @@
 #include <memory>
 #include "../utils/types.hpp"
 
+#define REF_MAX 20000
+
 enum class MapPixel {
 	barrier = 0,
 	path = 1,

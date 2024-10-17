@@ -6,7 +6,7 @@ int main(){
 
 	Mapper mapper;
 
-	mapper.LoadFile(std::string("./env/lab.bin"));
+	mapper.LoadFile(std::string("./env/big_lab.bin"));
 
 	mapper.Display();
 
