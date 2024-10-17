@@ -3,8 +3,17 @@
 #include <thread>
 #include <fstream>
 #include <iostream>
+#include <unistd.h> 
 
-Mapper::Mapper(){}
+static std::vector<std::thread> thds;
+
+Mapper::Mapper(){
+	//pathTracers = new std::vector<std::thread>();
+}
+
+void Mapper::push_thread(std::unique_ptr<std::thread> th){
+	//pathTracers.push_back(th);
+}
 
 void Mapper::LoadFile(std::string file){
 	std::string content = utils::fs::readFile(file);
@@ -34,19 +43,23 @@ void Mapper::LoadFile(std::string file){
 
 void Mapper::FindTarget(){
 	auto new_map = parsed_map;
-	
-	std::cout << "path finding it" << std::endl;
 
 	size_t index = locateValue(new_map, MapPixel::from);
 
 	auto xy = indexToXY(new_map, index);
 
 	std::vector<std::pair<int,int>> available_paths = findPathsAround(new_map, xy);
-
-	std::cout << index << " -> " << xy.first << " | " << xy.second << std::endl;
 	
+	std::vector<std::unique_ptr<std::thread>> ths;
+
 	for(auto path : available_paths){
-		forwardPath(this, new_map, path.first, path.second);
+		new_map = changePixelState(new_map, path.first, path.second, MapPixel::walked);
+
+		ths.push_back(std::make_unique<std::thread>(std::thread(forwardPath, this, new_map, path.first, path.second)));
+	}
+
+	for(int i=0; i<ths.size(); i++){
+		ths[i]->join();
 	}
 }
 
@@ -150,6 +163,11 @@ size_t XYToIndex(Map map, int x, int y){
 }
 
 MapPixel getValue(Map map, int x, int y){
+	int vertical_size = map.size();
+	int horizontal_size = map.size() > 0 ? map[0].size() : 0;
+
+	if(y < 0 || y >= vertical_size || x < 0 || x >= horizontal_size) return MapPixel::undefined;
+
 	return map[y][x];
 }
 
@@ -174,20 +192,34 @@ size_t locateValue(Map map, MapPixel pixel){
 }
 
 void forwardPath(Mapper *mapper, Map map, int stopped_x, int stopped_y){
-	if(mapper->found == false) return;
+	if(mapper->found) return;
 
-	std::cout << "looking for paths in thread" << std::endl;
+	++(mapper->ref_count);
 
 	std::pair<int,int> xy(stopped_x, stopped_y);
 
+	std::vector<std::pair<int,int>> target_paths = findPathsAround(map, xy, MapPixel::target);
+
+	if(target_paths.size() > 0){
+		mapper->setFound(map);
+		return;
+	}
+
 	std::vector<std::pair<int,int>> available_paths = findPathsAround(map, xy);
 
+	std::vector<std::unique_ptr<std::thread>> ths;
+
 	for(auto path : available_paths){
-		std::cout << "x=" <<xy.first << ";y="<< xy.second << " -> x=" << path.first << ";y=" << path.second << std::endl;
+		map = changePixelState(map, path.first, path.second, MapPixel::walked);
+		ths.push_back(std::make_unique<std::thread>(std::thread(forwardPath, mapper, map, path.first, path.second)));
+	}
+
+	for(int i=0; i<ths.size(); i++){
+		ths[i]->join();
 	}
 }
 
-std::vector<std::pair<int,int>> findPathsAround(Map map, std::pair<int,int> from_xy){
+std::vector<std::pair<int,int>> findPathsAround(Map map, std::pair<int,int> from_xy, MapPixel pixel){
 	std::vector<std::pair<int,int>> paths;
 	int x = from_xy.first;
 	int y = from_xy.second;
@@ -197,9 +229,9 @@ std::vector<std::pair<int,int>> findPathsAround(Map map, std::pair<int,int> from
 			int xr = x+xx;
 			int yr = y+yy;
 
-			MapPixel step = getValue(map, xr,yr);
+			MapPixel step = getValue(map, xr, yr);
 
-			if(step == MapPixel::path){
+			if(step == pixel){
 				paths.push_back(std::pair<int,int>(xr,yr));
 			}
 		}

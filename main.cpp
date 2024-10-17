@@ -10,7 +10,11 @@ int main(){
 
 	mapper.Display();
 
+	std::cout << "finding it" << std::endl;
+
 	mapper.FindTarget();
+
+	std::cout << "path finding done" << std::endl;
 
 	mapper.Display();
 
