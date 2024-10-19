@@ -5,7 +5,7 @@
 void onstep(Map map){
 	system("clear");displayMap(map);
 	
-	usleep(1000 * 10);
+	usleep(1000*10);
 }
 
 int main(){

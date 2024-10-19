@@ -65,20 +65,20 @@ void Mapper::FindTarget(){
 
 			std::pair<int,int> xy(current_map.last_x, current_map.last_y);
 
-			// remove walked paths
-			available_paths = findPathsAround(tracedMap, xy);
-			if(available_paths.size() == 0){
-				maps.erase(maps.begin()+i);
-				i=i-1;
-				continue;
-			}
-			
 			std::vector<std::pair<int,int>> target_paths = findPathsAround(current_map.map, xy, MapPixel::target);
 
 			if(target_paths.size() > 0){
 				setFound(current_map.map);
 				maps.erase(maps.begin(), maps.end());
 				return;
+			}
+
+			// remove walked paths
+			available_paths = findPathsAround(tracedMap, xy);
+			if(available_paths.size() == 0){
+				maps.erase(maps.begin()+i);
+				i=i-1;
+				continue;
 			}
 
 			available_paths = findPathsAround(current_map.map, xy);
@@ -99,7 +99,7 @@ void Mapper::FindTarget(){
 
 				maps.insert(maps.end(), current_maps.begin(), current_maps.end());
 			}
-
+			
 		}
 	}
 }
