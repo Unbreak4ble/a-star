@@ -145,14 +145,6 @@ void Mapper::setFound(Map new_map){
 	found_mtx.unlock();
 }
 
-void Mapper::addFound(Map new_map){
-	maps_found.push_back(new_map);
-	std::cout << "added found. Ref count: " << ref_count << std::endl;
-	if(ref_count < 2){
-		setFound(new_map);
-	}
-}
-
 void Mapper::onStep(void(*callback)(Map map)){
 	onStepEvent = callback;
 }

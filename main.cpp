@@ -5,21 +5,23 @@
 void onstep(Map map){
 	system("clear");displayMap(map);
 	
-	usleep(10000);
+	usleep(1000 * 10);
 }
 
 int main(){
 	std::cout << "hello world from a star path finding algorithm" << std::endl;
 
 	Mapper mapper;
+	std::string file = "";
 
-	mapper.LoadFile(std::string("./env/big_lab.bin"));
+	std::cout << "enter path file: ";
+	std::cin >> file;
 
-	//mapper.Display();
+	std::cout << "loading file" << std::endl;
+
+	mapper.LoadFile(file);
 
 	mapper.onStep(onstep);
-
-	std::cout << "finding it" << std::endl;
 
 	mapper.FindTarget();
 

@@ -58,8 +58,6 @@ class Mapper {
 
 		void setFound(Map new_map);
 
-		void addFound(Map new_map);
-
 		void MergeWorkingMap(Map map);
 };
 
