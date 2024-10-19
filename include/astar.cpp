@@ -60,11 +60,19 @@ void Mapper::FindTarget(){
 
 	while(!found){
 		backto:
-		for(int i=0; i<maps.size(); i++){
+		for(int i=0,j=0; i<maps.size(); i++, j++){
 			MapMapped current_map = maps[i];
 
 			std::pair<int,int> xy(current_map.last_x, current_map.last_y);
 
+			// remove walked paths
+			available_paths = findPathsAround(tracedMap, xy);
+			if(available_paths.size() == 0){
+				maps.erase(maps.begin()+i);
+				i=i-1;
+				continue;
+			}
+			
 			std::vector<std::pair<int,int>> target_paths = findPathsAround(current_map.map, xy, MapPixel::target);
 
 			if(target_paths.size() > 0){
@@ -92,12 +100,6 @@ void Mapper::FindTarget(){
 				maps.insert(maps.end(), current_maps.begin(), current_maps.end());
 			}
 
-			// remove walked paths
-			available_paths = findPathsAround(tracedMap, xy);
-			if(available_paths.size() == 0){
-				maps.erase(maps.begin()+i);
-				goto backto;
-			}
 		}
 	}
 }
