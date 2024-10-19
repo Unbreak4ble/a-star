@@ -3,11 +3,9 @@
 #include "include/astar.hpp"
 
 void onstep(Map map){
-	system("clear");
-
-	displayMap(map);
+	system("clear");displayMap(map);
 	
-	usleep(1000);
+	usleep(100);
 }
 
 int main(){

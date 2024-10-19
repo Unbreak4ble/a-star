@@ -5,6 +5,7 @@
 #include <string>
 #include <memory>
 #include <mutex>
+#include <atomic>
 #include "../utils/types.hpp"
 
 #define REF_MAX 20000
@@ -21,17 +22,24 @@ enum class MapPixel {
 
 typedef std::vector<std::vector<MapPixel>> Map;
 
+struct MapMapped {
+	Map map;
+	int last_x;
+	int last_y;
+};
+
 class Mapper {
-		std::vector<std::unique_ptr<std::thread>> pathTracers;
 		std::vector<BYTE> map; // raw map from file
 		Map parsed_map; // 2D parsed map
 		Map tracedMap;
+		std::vector<Map> maps_found;
+		std::mutex found_mtx;
 		void(*onStepEvent)(Map map) = nullptr;
 
 	public:
-		std::mutex mtx;
+		std::mutex ths_mtx;
 		std::mutex map_mtx;
-		bool found = false;
+		std::atomic<bool> found;
 		unsigned long ref_count=0;
 
 		Mapper();
@@ -49,6 +57,8 @@ class Mapper {
 		Map GetParsedMap();
 
 		void setFound(Map new_map);
+
+		void addFound(Map new_map);
 
 		void MergeWorkingMap(Map map);
 };
@@ -73,4 +83,4 @@ Map pathFindIt(Map map, void(*onRoute)(Map) = nullptr);
 
 std::vector<std::pair<int,int>> findPathsAround(Map map, std::pair<int,int> xy, MapPixel pixel = MapPixel::path);
 
-void forwardPath(Mapper *mapper, Map map, int stopped_x, int stopped_y);
+std::vector<MapMapped> forwardPath(std::vector<std::unique_ptr<std::thread>> *ths, Mapper *mapper, Map map, int stopped_x, int stopped_y);

@@ -41,31 +41,114 @@ void Mapper::LoadFile(std::string file){
 
 void Mapper::FindTarget(){
 	auto new_map = parsed_map;
+	found = false;
 
 	size_t index = locateValue(new_map, MapPixel::from);
 
 	auto xy = indexToXY(new_map, index);
 
 	std::vector<std::pair<int,int>> available_paths = findPathsAround(new_map, xy);
-	
-	std::vector<std::unique_ptr<std::thread>> ths;
+
+	std::vector<MapMapped> maps = {};
+	std::vector<std::unique_ptr<std::thread>> root_ths;
 
 	for(auto path : available_paths){
-		ths.push_back(std::make_unique<std::thread>(std::thread(forwardPath, this, new_map, path.first, path.second)));
+		auto current_maps = forwardPath(&root_ths, this, new_map, path.first, path.second);
+
+		maps.insert(maps.begin(), current_maps.begin(), current_maps.end());
 	}
 
-	for(int i=0; i<ths.size(); i++){
-		ths[i]->join();
+	while(!found){
+		backto:
+		for(int i=0; i<maps.size(); i++){
+			MapMapped current_map = maps[i];
+
+			std::pair<int,int> xy(current_map.last_x, current_map.last_y);
+
+			std::vector<std::pair<int,int>> target_paths = findPathsAround(current_map.map, xy, MapPixel::target);
+
+			if(target_paths.size() > 0){
+				setFound(current_map.map);
+				maps.erase(maps.begin(), maps.end());
+				return;
+			}
+
+			available_paths = findPathsAround(current_map.map, xy);
+
+			for(auto path : available_paths){
+				bool duplicated = false;
+				for(auto mapit : maps){
+					if(mapit.last_x == path.first && mapit.last_y == path.second){
+						maps.erase(maps.begin()+i);
+						duplicated = true;
+					}
+				}
+
+				if(duplicated)
+					goto backto;
+
+				auto current_maps = forwardPath(&root_ths, this, current_map.map, path.first, path.second);
+
+				maps.insert(maps.end(), current_maps.begin(), current_maps.end());
+			}
+
+			// remove walked paths
+			available_paths = findPathsAround(tracedMap, xy);
+			if(available_paths.size() == 0){
+				maps.erase(maps.begin()+i);
+				goto backto;
+			}
+		}
 	}
 }
 
+std::vector<MapMapped> forwardPath(std::vector<std::unique_ptr<std::thread>> *ths, Mapper *mapper, Map map, int stopped_x, int stopped_y){
+	if(mapper->found) return {};
+	if(mapper->ref_count >= REF_MAX) return {};
+
+	std::vector<MapMapped> maps;
+
+	map = changePixelState(map, stopped_x, stopped_y, MapPixel::walked);
+
+	mapper->MergeWorkingMap(map);
+
+	std::pair<int,int> xy(stopped_x, stopped_y);
+
+	std::vector<std::pair<int,int>> target_paths = findPathsAround(map, xy, MapPixel::target);
+
+	if(target_paths.size() > 0){
+		mapper->setFound(map);
+		return {};
+	}
+
+	std::vector<std::pair<int,int>> available_paths = findPathsAround(map, xy);
+
+	for(auto path : available_paths){
+		maps.push_back({
+			.map=changePixelState(map, path.first, path.second, MapPixel::walked),
+			.last_x = path.first,
+			.last_y = path.second,
+		});
+	}
+
+	return maps;
+}
+
 void Mapper::setFound(Map new_map){
-	mtx.lock();
+	found_mtx.lock();
 	if(found == true) return;
 
 	parsed_map = new_map;
 	found = true;
-	mtx.unlock();
+	found_mtx.unlock();
+}
+
+void Mapper::addFound(Map new_map){
+	maps_found.push_back(new_map);
+	std::cout << "added found. Ref count: " << ref_count << std::endl;
+	if(ref_count < 2){
+		setFound(new_map);
+	}
 }
 
 void Mapper::onStep(void(*callback)(Map map)){
@@ -228,46 +311,6 @@ size_t locateValue(Map map, MapPixel pixel){
 	return -1;
 }
 
-void forwardPath(Mapper *mapper, Map map, int stopped_x, int stopped_y){
-	if(mapper->found) return;
-	if(mapper->ref_count >= REF_MAX) return;
-
-	map = changePixelState(map, stopped_x, stopped_y, MapPixel::walked);
-
-	mapper->MergeWorkingMap(map);
-
-	++(mapper->ref_count);
-
-	std::pair<int,int> xy(stopped_x, stopped_y);
-
-	std::vector<std::pair<int,int>> target_paths = findPathsAround(map, xy, MapPixel::target);
-
-	if(target_paths.size() > 0){
-		mapper->setFound(map);
-		--(mapper->ref_count);
-		return;
-	}
-
-	std::vector<std::pair<int,int>> available_paths = findPathsAround(map, xy);
-
-	if(available_paths.size() == 1){
-		std::pair<int,int> path = available_paths[0];
-
-		forwardPath(mapper, map, path.first, path.second);
-	}else{
-		std::vector<std::unique_ptr<std::thread>> ths;
-
-		for(auto path : available_paths){
-			ths.push_back(std::make_unique<std::thread>(std::thread(forwardPath, mapper, map, path.first, path.second)));
-		}
-
-		for(int i=0; i<ths.size(); i++){
-			ths[i]->join();
-		}
-	}
-
-	--(mapper->ref_count);
-}
 
 std::vector<std::pair<int,int>> findPathsAround(Map map, std::pair<int,int> from_xy, MapPixel pixel){
 	std::vector<std::pair<int,int>> paths;
